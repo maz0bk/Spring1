@@ -14,6 +14,10 @@
         <module>_03_xml_dto</module>
         <module>_04_xml_bean</module>
         <module>_05_java_config_basic</module>
+        <module>_06_java_config_bean_name</module>
+        <module>_07_java_config_method_name</module>
+        <module>_08_java_config_scope_singleton</module>
+        <module>_09_annotation_config</module>
     </modules>
     <dependencies>
         <!-- https://mvnrepository.com/artifact/org.springframework/spring-core -->
