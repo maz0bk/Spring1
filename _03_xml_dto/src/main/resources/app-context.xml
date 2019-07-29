@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd">
+    <bean id="moskow" class="cc.vgur.spring.model.Location">
+        <property name="country" value="Russia" />
+        <property name="town" value="Moskow" />
+        <property name="phone" value="77777777" />
+        <property name="latitude" value="232344" />
+        <property name="longitude" value="7765430" />
+    </bean>
+    <bean id="sevsstopol" class="cc.vgur.spring.model.Location">
+        <property name="country" value="Russia" />
+        <property name="town" value="Sevastopol" />
+        <property name="phone" value="88888888" />
+        <property name="latitude" value="414566" />
+        <property name="longitude" value="4735846" />
+    </bean>
+    <bean id="mainServer" class="cc.vgur.spring.model.Server">
+        <property name="ip" value="192.168.0.200" />
+    </bean>
+    <bean id="backupServer" class="cc.vgur.spring.model.Server">
+        <property name="ip" value="192.168.0.156" />
+    </bean>
+
+    <bean id="admin" class="cc.vgur.spring.model.User">
+        <property name="login" value="admin"/>
+        <property name="password" value="123123"/>
+        <property name="server" ref="mainServer"/>
+        <property name="locations">
+            <list>
+                <ref bean="moskow"/>
+                <ref bean="sevsstopol"/>
+            </list>
+        </property>
+        <property name="roles">
+            <list>
+                <value>ADMIN</value>
+                <value>MODER</value>
+            </list>
+        </property>
+    </bean>
+
+    <bean id="root" class="cc.vgur.spring.model.User">
+        <property name="login" value="root"/>
+        <property name="password" value="321321"/>
+        <property name="server" ref="backupServer"/>
+        <property name="locations">
+            <list>
+                <ref bean="moskow"/>
+            </list>
+        </property>
+        <property name="roles">
+            <list>
+                <value>MODER</value>
+            </list>
+        </property>
+    </bean>
+</beans>
