@@ -26,6 +26,8 @@
         <module>_15_qualofier_string</module>
         <module>_16_qualifier_xml</module>
         <module>_17_qualifier_annotation</module>
+        <module>_18_qualifier_convention</module>
+        <module>_19_qualifier_config</module>
 
     </modules>
     <dependencies>
