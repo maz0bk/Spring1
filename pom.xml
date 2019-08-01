@@ -18,6 +18,15 @@
         <module>_07_java_config_method_name</module>
         <module>_08_java_config_scope_singleton</module>
         <module>_09_annotation_config</module>
+        <module>_10_autowired_basic</module>
+        <module>_11_autowired_type</module>
+        <module>_12_inject</module>
+        <module>_13_empty_multiple_config</module>
+        <module>_14_qualifier_primary</module>
+        <module>_15_qualofier_string</module>
+        <module>_16_qualifier_xml</module>
+        <module>_17_qualifier_annotation</module>
+
     </modules>
     <dependencies>
         <!-- https://mvnrepository.com/artifact/org.springframework/spring-core -->
@@ -31,6 +40,13 @@
             <groupId>org.springframework</groupId>
             <artifactId>spring-context</artifactId>
             <version>5.1.8.RELEASE</version>
+        </dependency>
+        <!-- https://mvnrepository.com/artifact/org.projectlombok/lombok -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>1.18.8</version>
+            <scope>provided</scope>
         </dependency>
 
     </dependencies>
