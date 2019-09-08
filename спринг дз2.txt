@@ -1,0 +1,154 @@
+package com.geekbrains.entities;
+
+import lombok.Data;
+
+@Data
+public class Product {
+    private int id;
+    private String title;
+
+    public Product(int id, String title, double cost) {
+        this.id = id;
+        this.title = title;
+        this.cost = cost;
+    }
+
+    private double cost;
+
+    public Product() {
+    }
+}
+package com.geekbrains.services;
+
+import com.geekbrains.entities.Product;
+import com.geekbrains.repositories.ProductRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+
+@Service
+public class ProductService {
+    private ProductRepository productRepository;
+    @Autowired
+    public void setProductRepository(ProductRepository productRepository){
+        this.productRepository = productRepository;
+
+    }
+    public Product getProductByID(int id){
+        return productRepository.getProductByID(id);
+    }
+    public List<Product> getAllProducts(){
+        return productRepository.getProductList();
+    }
+
+    public Product addProduct(Product product){
+        if(product==null){return null;}
+        return productRepository.addProduct(product);
+    }
+}
+package com.geekbrains.repositories;
+
+import com.geekbrains.entities.Product;
+import org.springframework.stereotype.Component;
+
+import javax.annotation.PostConstruct;
+import java.util.ArrayList;
+import java.util.List;
+@Component
+public class ProductRepository {
+    private List<Product> productList;
+    @PostConstruct
+    public void init(){
+        productList = new ArrayList<>();
+        productList.add(new Product(1, "Notebook LG Gramm",1200d));
+        productList.add(new Product(2, "Notebook Asus Zenbook",1500d));
+        productList.add(new Product(3, "Notebook Huawei Matebook Pro X",1700d));
+    }
+
+    public List<Product> getProductList(){
+        return productList;
+    }
+
+    public Product getProductByID(int id){
+        for (Product p :productList) {
+            if (p.getId() == id){return p;}
+        }
+        return null;
+    }
+
+    public Product addProduct(Product p){
+        productList.add(p);
+        return p;
+    }
+}
+package com.geekbrains.controllers;
+
+import com.geekbrains.entities.Product;
+import com.geekbrains.services.ProductService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.RequestMapping;
+
+@Controller
+@RequestMapping("/products")
+public class ProductController {
+    private ProductService productService;
+
+    @Autowired
+    public void setProductService(ProductService productService) {
+        this.productService = productService;
+    }
+    @RequestMapping("/all")
+    public String showAllProductsForm(Model model){
+        model.addAttribute("products", productService.getAllProducts());
+        return "productsAll";
+    }
+    @RequestMapping("/new")
+    public String showAddProductForm(Model model){
+        Product product = new Product();
+        model.addAttribute("product",product);
+        return "productsAdd";
+    }
+    @RequestMapping("/formAddProductProcess")
+    public String formAddProductProcess(@ModelAttribute("product") Product product){
+        productService.addProduct(product);
+        return "redirect:/products/all";
+    }
+}
+
+
+//productsAll.jsp
+<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
+<!DOCTYPE html>
+<html>
+    <body>
+        <h1>All products</h1>
+        <c:forEach var="product" items="${products}">
+            <span>${product.id} ${product.title} ${product.cost}</span>
+            <br>
+        </c:forEach>
+    </body>
+</html>
+
+
+//productsAdd.jsp
+<%@ taglib prefix="form" uri="http://www.springframework.org/tags/form" %>
+<!DOCTYPE html>
+
+<html>
+    <body>
+        <form:form action="formAddProductProcess" modelAttribute="product">
+            ID: <form:input path="id"/>
+            <br>
+            Title: <form:input path="title"/>
+            <br>
+            Cost: <form:input path="cost"/>
+            <br>
+            <input type="submit" value="Save"/>
+
+        </form:form>
+    </body>
+</html>
