@@ -1,0 +1,209 @@
+public class PrepareShopData {
+    public static void main(String[] args) {
+        forcePrepareData();
+    }
+
+    public static void forcePrepareData() {
+        SessionFactory factory = new Configuration()
+                .configure("configs/shop/prepare_data.cfg.xml")
+                .buildSessionFactory();
+        Session session = null;
+        try{
+            String sql = Files.lines(Paths.get("shop.sql")).collect(Collectors.joining(" "));
+            session = factory.getCurrentSession();
+            session.beginTransaction();
+            session.createNativeQuery(sql).executeUpdate();
+            session.getTransaction().commit();
+        } catch (IOException e){
+            e.printStackTrace();
+        } finally {
+            factory.close();
+            if (session != null){
+                session.close();
+            }
+        }
+    }
+}
+
+@Entity
+@Table(name = "customers")
+@Data
+public class Customer implements Serializable {
+    private static final long serialVersionUID = 3765072722819264482L;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id")
+    private Long id;
+
+    @Column(name = "name")
+    private String name;
+
+    @ManyToMany
+    @JoinTable(
+        name = "sales",
+        joinColumns = @JoinColumn(name = "customer_id"),
+        inverseJoinColumns = @JoinColumn(name = "product_id")
+    )
+    private List<Product> products;
+
+    public Customer() {
+    }
+
+    public Customer(String name) {
+        this.name = name;
+    }
+
+    @Override
+    public String toString() {
+        return "Customer{" +
+                "id=" + id +
+                ", name='" + name + '\'' +
+                '}';
+    }
+}
+
+@Entity
+@Table(name = "products")
+@Data
+public class Product implements Serializable {
+
+    private static final long serialVersionUID = 2758086251881233760L;
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id")
+    private Long id;
+
+    @Column(name = "title")
+    private String title;
+
+    @Column(name = "price")
+    private Double price;
+
+    @ManyToMany
+    @JoinTable(
+            name = "sales",
+            joinColumns = @JoinColumn(name = "product_id"),
+            inverseJoinColumns = @JoinColumn(name = "customer_id")
+    )
+    private List<Customer> customers;
+
+    public Product() {
+    }
+
+    public Product(String title, Double price) {
+        this.title = title;
+        this.price = price;
+    }
+
+    @Override
+    public String toString() {
+        return "Product{" +
+                "id=" + id +
+                ", title='" + title + '\'' +
+                ", price=" + price +
+                '}';
+    }
+}
+
+public class ShopApp {
+    public static void main(String[] args) {
+        SessionFactory factory = new Configuration()
+                .configure("configs/shop/shop.cfg.xml")
+                .buildSessionFactory();
+
+        Session session = null;
+        try {
+            session = factory.getCurrentSession();
+            session.beginTransaction();
+            Customer customer = session.get(Customer.class, 1L);
+            System.out.println(customer);
+            System.out.println("products:");
+            for (Product p : customer.getProducts()) {
+                System.out.println(p);
+            }
+
+            Product product = session.get(Product.class, 2L);
+            System.out.println(product);
+            System.out.println("Customers:");
+            for (Customer c: product.getCustomers()) {
+                System.out.println(c);
+            }
+            session.getTransaction().commit();
+
+            System.out.println("ADD Product");
+            session = factory.getCurrentSession();
+            session.beginTransaction();
+            Product newProduct = new Product("meat",18.00);
+            session.save(newProduct);
+            session.getTransaction().commit();
+
+            System.out.println("AFTER ADD");
+            session = factory.getCurrentSession();
+            session.beginTransaction();
+            List<Product> products = session.createQuery("SELECT p FROM Product p",Product.class).getResultList();
+            for (Product p: products) {
+                System.out.println(p);
+            }
+            session.getTransaction().commit();
+
+            System.out.println("DELETE PRODUCT");
+            session = factory.getCurrentSession();
+            session.beginTransaction();
+            product = session.get(Product.class,1L);
+            System.out.println("Delete product");
+            System.out.println(product);
+            session.delete(product);
+            session.getTransaction().commit();
+
+            System.out.println("AFTER DELETE PRODUCT");
+            session = factory.getCurrentSession();
+            session.beginTransaction();
+            products = session.createQuery("SELECT p FROM Product p",Product.class).getResultList();
+            for (Product p: products) {
+                System.out.println(p);
+            }
+            session.getTransaction().commit();
+
+
+        } finally {
+            factory.close();
+            if (session != null) {
+                session.close();
+            }
+        }
+    }
+
+}
+
+
+////shop.sql
+BEGIN;
+
+DROP TABLE IF EXISTS products CASCADE;
+CREATE TABLE products (id bigserial PRIMARY KEY, title VARCHAR(255), price numeric(6, 2));
+INSERT INTO products (title, price) VALUES
+('coffee',50.00),
+('tea', 10.00),
+('bread', 15.00),
+('cookies',64.00),
+('pasta',56.00);
+
+DROP TABLE IF EXISTS customers CASCADE;
+CREATE TABLE customers (id bigserial PRIMARY KEY, name VARCHAR(255));
+INSERT INTO customers (name) VALUES
+('Alexander'),
+('Bob'),
+('Antony');
+
+DROP TABLE IF EXISTS sales CASCADE;
+CREATE TABLE sales (product_id bigint, customer_id bigint, FOREIGN KEY (product_id) REFERENCES products (id), FOREIGN KEY (customer_id) REFERENCES customers (id));
+INSERT INTO sales (product_id, customer_id) VALUES
+(1, 1),
+(2, 1),
+(3, 1),
+(3, 2),
+(4, 1),
+(4, 3),
+(1, 2),
+(2, 2);
