@@ -1,0 +1,140 @@
+package com.geekbrains.bootdata.entities;
+@Entity
+@Data
+@Table(name = "products")
+public class Product {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id")
+    private Long id;
+
+    @Column(name = "title")
+    private String title;
+
+    @Column(name = "price")
+    private Double price;
+
+    public Product() {
+    }
+
+    public Product(String title, Double price) {
+        this.title = title;
+        this.price = price;
+    }
+}
+
+
+
+package com.geekbrains.bootdata.repositories;
+public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpecificationExecutor<Product> {
+}
+
+
+package com.geekbrains.bootdata.repositories;
+public class ProductSpecification {
+    public static Specification<Product> titleContains(String word){
+        return (Specification<Product>) (root, criteriaQuery, criteriaBuilder) -> criteriaBuilder.like(root.get("title"), "%" + word + "%");
+    }
+
+    public static Specification<Product> priceGreaterThanOrEq(int value){
+        return (Specification<Product>) (root, criteriaQuery, criteriaBuilder) ->{
+            return criteriaBuilder.greaterThanOrEqualTo(root.get("price"), value);
+        };
+    }
+    public static Specification<Product> priceLesserThanOrEq(int value){
+        return (Specification<Product>) (root, criteriaQuery, criteriaBuilder) ->{
+            return criteriaBuilder.lessThanOrEqualTo(root.get("price"), value);
+        };
+    }
+}
+
+
+package com.geekbrains.bootdata.services;
+@Service
+public class ProductService {
+    @Autowired
+    private ProductRepository productRepository;
+
+    public Page<Product> findAll(Specification<Product> spec, PageRequest pageRequest){
+        return productRepository.findAll(spec,pageRequest);
+    }
+}
+
+
+package com.geekbrains.bootdata.controllers;
+@Controller
+public class ProductController {
+    @Autowired
+    private ProductService productService;
+
+    @GetMapping("/products")
+    public String getProducts(Model model,
+                              @RequestParam(required = false,name = "minPrice") Integer minPrice,
+                              @RequestParam(required = false,name = "maxPrice") Integer maxPrice,
+                              @RequestParam(required = false,name = "word") String word){
+        Specification<Product> spec = Specification.where(null);
+        if (minPrice != null){
+            spec = spec.and(ProductSpecification.priceGreaterThanOrEq(minPrice));
+        }
+        if (maxPrice != null){
+            spec = spec.and(ProductSpecification.priceLesserThanOrEq(maxPrice));
+        }
+        if (word != null){
+            spec = spec.and(ProductSpecification.titleContains(word));
+        }
+        Page<Product> page = productService.findAll(spec, PageRequest.of(0,6, Sort.Direction.ASC,"price"));
+        model.addAttribute("products", page.getContent());
+        model.addAttribute("productsCount", page.getTotalElements());
+        return "listProducts";
+    }
+}
+
+//listProducts.html
+<!DOCTYPE html>
+
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+
+    <title>Spring Data Demo</title>
+
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js"></script>
+</head>
+
+<body>
+<div class="container">
+    <h3>Filters</h3>
+    <form th:action="@{/products}" method="get">
+        <input th:name="word" type="text" placeholder="Название содержит">
+        <input th:name="minPrice" type="number" placeholder="Минимальна цена">
+        <input th:name="maxPrice" type="number" placeholder="Максимальная цена">
+        <button type="submit" class="button">Отфильтровать</button>
+    </form>
+</div>
+
+<div class="container">
+    <h1>Products</h1>
+    <table  class="table table-hover" th:if="${products.size() > 0}">
+        <thead>
+        <tr>
+            <td>id</td>
+            <td>title</td>
+            <td>price</td>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="i : ${products}">
+            <td th:text="${i.id}" />
+            <td th:text="${i.title}" />
+            <td th:text="${i.price}" />
+        </tr>
+        </tbody>
+    </table>
+    <br>
+    <span th:text="'Total products count (filtered): ' + ${productsCount}" />
+</div>
+</body>
+</html>
