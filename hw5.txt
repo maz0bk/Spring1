@@ -1,0 +1,217 @@
+@Repository
+public interface CategoryRepository extends JpaRepository<Category,Long> {
+    Optional<Category> findFirstByTitle(String title);
+}
+
+@Service
+public class CategoryService {
+    private CategoryRepository categoryRepository;
+
+    @Autowired
+    public CategoryService(CategoryRepository categoryRepository) {
+        this.categoryRepository = categoryRepository;
+    }
+
+    public List<Category> findAll(){
+        return categoryRepository.findAll();
+    }
+
+    public Optional<Category> findFirstByTitle(String title){
+        return categoryRepository.findFirstByTitle(title);
+    }
+}
+
+@Getter
+public class ItemFilter {
+    private Specification<Item> spec;
+    private StringBuilder filterDefinition;
+    private CategoryService categoryService;
+    private Sort.Direction sortDirect;
+    private String sortType;
+
+    @Autowired
+    public void setCategoryService(CategoryService categoryService) {
+        this.categoryService = categoryService;
+    }
+
+    public ItemFilter(Map<String, String> map,CategoryService categoryService) {
+        this.categoryService = categoryService;
+        this.spec = Specification.where(null);
+        this.filterDefinition = new StringBuilder();
+        this.sortDirect = Sort.Direction.ASC;
+        this.sortType = "id";
+
+        if (map.containsKey("min_price") && !map.get("min_price").isEmpty()) {
+            int minPrice = Integer.parseInt(map.get("min_price"));
+            spec = spec.and(ItemSpecifications.priceGEThan(minPrice));
+            filterDefinition.append("&min_price=").append(minPrice);
+        }
+        if (map.containsKey("max_price") && !map.get("max_price").isEmpty()) {
+            int maxPrice = Integer.parseInt(map.get("max_price"));
+            spec = spec.and(ItemSpecifications.priceLEThan(maxPrice));
+            filterDefinition.append("&max_price=").append(maxPrice);
+        }
+        if (map.containsKey("category") && !map.get("category").isEmpty()) {
+            Optional<Category> category = categoryService.findFirstByTitle(map.get("category"));
+            if (category.isPresent()){
+                spec = spec.and(ItemSpecifications.categoryEquals(category.get()));
+                filterDefinition.append("&category=").append(category.get().getTitle());
+            }
+        }
+
+        if (map.containsKey("stype") && !map.get("stype").isEmpty()){
+            sortType = map.get("stype");
+        }
+        filterDefinition.append("&stype=").append(sortType);
+
+        if (map.containsKey("direction") && !map.get("direction").isEmpty()){
+            sortDirect = (map.get("direction").equals("desc"))? Sort.Direction.DESC:Sort.Direction.ASC;
+        }
+        filterDefinition.append("&direction=").append(sortDirect.toString().toLowerCase());
+    }
+}
+
+@Controller
+public class MarketController {
+    private ItemService itemService;
+    private CategoryService categoryService;
+
+    @Autowired
+    public MarketController(ItemService itemService) {
+        this.itemService = itemService;
+    }
+
+    @Autowired
+    public void setCategoryService(CategoryService categoryService) {
+        this.categoryService = categoryService;
+    }
+
+    @GetMapping("/")
+    public String index(Model model, @RequestParam Map<String, String> params) {
+        int pageIndex = 0;
+        if (params.containsKey("p")) {
+            pageIndex = Integer.parseInt(params.get("p")) - 1;
+        }
+
+        ItemFilter itemFilter = new ItemFilter(params,categoryService);
+        Pageable pageRequest = PageRequest.of(pageIndex, 2,itemFilter.getSortDirect(),itemFilter.getSortType());
+        Page<Item> page = itemService.findAll(itemFilter.getSpec(), pageRequest);
+
+        List<Category> categories = categoryService.findAll();
+
+        model.addAttribute("filtersDef", itemFilter.getFilterDefinition());
+        model.addAttribute("categories", categories);
+        model.addAttribute("page", page);
+        return "index";
+    }
+}
+
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="utf-8"/>
+    <title>Заготовка магазина</title>
+
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js"></script>
+</head>
+
+<body>
+
+<div class="container">
+    <h1>Заготовка магазина</h1>
+
+    <h3>Фильтр</h3>
+    <form th:action="@{/}" method="GET">
+        <div class="input-group">
+            <input class="form-control" th:value="${param.min_price}" name="min_price" type="number"
+                   placeholder="Минимальная цена"/>
+            <input class="form-control" th:value="${param.max_price}" name="max_price" type="number"
+                   placeholder="Максимальная цена"/>
+            <select name="category">
+                <option th:text="'Не выбрана'" th:value="null"/>
+                <option th:each="c : ${categories}" th:text="${c.title}" th:selected="${param.category != null && c.title == param.category.toString()}" th:value="${c.title}"/>
+            </select>
+
+
+<!--            <select name="sort">-->
+<!--                <option th:text="'Сортировка не выбрана'" th:value="null"/>-->
+<!--                <option th:each="s : ${sorts}" th:text="${s.title}" th:selected="${param.sort != null && s.title == param.sort.toString()}" th:value="${s.title}"/>-->
+<!--            </select>-->
+<!--            <span th:text="${param.category}" />-->
+        </div>
+        <br>
+        <div class="btn-group btn-group-toggle" data-toggle="buttons" title="Вид сортировки">
+            <label class="btn btn-secondary" th:classappend="${param.stype != null && param.stype.toString() == 'id'} ? active : ''">
+                <input type="radio" name="stype" id="sort1" value="id"> по id
+            </label>
+            <label class="btn btn-secondary" th:classappend="${param.stype != null && param.stype.toString() == 'title'} ? active : ''">
+                <input type="radio" name="stype" id="sort2" value="title"> по названию
+            </label>
+            <label class="btn btn-secondary" th:classappend="${param.stype != null && param.stype.toString() == 'price'} ? active : ''">
+                <input type="radio" name="stype" id="sort3" value="price"> по цене
+            </label>
+        </div>
+
+        <br>
+
+        <div class="btn-group btn-group-toggle" data-toggle="buttons" title="направление сортировки">
+            <label class="btn btn-secondary" th:classappend="${param.direction != null && param.direction.toString() == 'asc'} ? active : ''">
+                <input type="radio" name="direction" id="option1" value="asc"> по возрастанию
+            </label>
+            <label class="btn btn-secondary" th:classappend="${param.direction != null && param.direction.toString() == 'desc'} ? active : ''">
+                <input type="radio" name="direction" id="option2" value="desc"> по убыванию
+            </label>
+        </div>
+
+        <br>
+        <button type="submit" class="btn btn-warning">Фильтровать</button>
+        <a class="btn btn-warning" th:href="@{'/?p=1'}">Сбросить фильтр</a>
+    </form>
+    <br>
+    <h3>Каталог товаров</h3>
+    <table class="table table-hover">
+        <thead class="thead-dark">
+        <tr>
+            <th>ID</th>
+            <th>Описание товара</th>
+            <th>Цена</th>
+        </tr>
+        </thead>
+        <tbody>
+        <!--/*@thymesVar id="page" type="org.springframework.data.domain.Page<com.geekbrains.marketdemoa.entites.Item>"*/-->
+        <!--/*@thymesVar id="item" type="com.geekbrains.marketdemoa.entites.Item"*/-->
+        <tr th:each="item : ${page.content}">
+            <td th:text="${item.id}"/>
+            <td>
+                <span style="font-weight: bold" th:text="${item.title}"/>
+                <br>
+                <span th:text="${item.description}"/>
+            </td>
+            <td th:text="${item.price}"/>
+        </tr>
+        </tbody>
+    </table>
+
+    <nav aria-label="Page navigation">
+        <ul class="pagination">
+            <li class="page-item" th:classappend="${!(page.getNumber() > 0) ? 'disabled' : ''}">
+                <a class="page-link"
+                    th:href="@{'/?p='+ ${page.previousOrFirstPageable().getPageNumber() + 1} + ${filtersDef}}">Prev</a>
+            </li>
+            <li class="page-item" th:classappend="${page.getNumber() + 1 == i ? 'active' : ''}"
+                th:each="i : ${#numbers.sequence(1, page.getTotalPages())}">
+                <a th:class="page-link" th:text="${i}" th:href="@{'/?p=' + ${i} + ${filtersDef}}"></a>
+            </li>
+            <li class="page-item" th:classappend="${!(page.getNumber() < page.getTotalPages() - 1) ? 'disabled' : ''}">
+                <a class="page-link"
+                   th:href="@{'/?p='+ ${page.nextOrLastPageable().getPageNumber() + 1} + ${filtersDef}}">Next</a>
+            </li>
+        </ul>
+    </nav>
+</div>
+
+</body>
+</html>
